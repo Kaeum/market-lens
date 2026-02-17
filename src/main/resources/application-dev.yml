@@ -1,0 +1,11 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/marketlens
+
+  flyway:
+    url: jdbc:postgresql://localhost:5432/marketlens
+
+logging:
+  level:
+    io.kaeum.marketlens: DEBUG
+    org.springframework.r2dbc: DEBUG
