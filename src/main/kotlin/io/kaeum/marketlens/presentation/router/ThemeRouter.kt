@@ -8,12 +8,18 @@ import org.springframework.web.reactive.function.server.coRouter
 @Configuration
 class ThemeRouter(private val handler: ThemeHandler) {
 
+    companion object {
+        private const val BASE_PATH = "/api/v1/themes"
+        private const val PATH_PERFORMANCE = "/performance"
+        private const val PATH_LEADERS = "/{themeId}/leaders"
+    }
+
     @Bean
     fun themeRoutes() = coRouter {
-        "/api/v1/themes".nest {
+        BASE_PATH.nest {
             GET("", handler::getAllThemes)
-            GET("/performance", handler::getThemePerformance)
-            GET("/{themeId}/leaders", handler::getThemeLeaders)
+            GET(PATH_PERFORMANCE, handler::getThemePerformance)
+            GET(PATH_LEADERS, handler::getThemeLeaders)
         }
     }
 }

@@ -37,11 +37,21 @@ springdoc:
 kafka:
   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
-# 외부 API 키 (Phase 2에서 활용)
+# 외부 API
 kis:
   app-key: ${KIS_APP_KEY:}
   app-secret: ${KIS_APP_SECRET:}
   account-number: ${KIS_ACCOUNT_NUMBER:}
+  base-url: ${KIS_BASE_URL:https://openapivts.koreainvestment.com:29443}
+  token-refresh-before-minutes: 30
+  connection-timeout-ms: 5000
+  read-timeout-ms: 10000
+
+krx:
+  api-key: ${KRX_API_KEY:}
+  base-url: ${KRX_BASE_URL:http://data-dbg.krx.co.kr/svc/apis}
+  connection-timeout-ms: 10000
+  read-timeout-ms: 30000
 
 dart:
   api-key: ${DART_API_KEY:}

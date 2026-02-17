@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.1.0"
     kotlin("plugin.spring") version "2.1.0"
+    kotlin("kapt") version "2.1.0"
     id("org.springframework.boot") version "3.4.2"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -52,6 +53,9 @@ dependencies {
     // Actuator
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    // Configuration Processor
+    kapt("org.springframework.boot:spring-boot-configuration-processor")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
@@ -59,6 +63,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
     testImplementation("io.r2dbc:r2dbc-h2")
     testRuntimeOnly("com.h2database:h2")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 kotlin {

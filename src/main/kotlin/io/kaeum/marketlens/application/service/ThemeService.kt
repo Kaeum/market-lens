@@ -20,6 +20,12 @@ class ThemeService(
     private val snapshotRepository: StockPriceSnapshotRepository,
 ) : ThemeQueryUseCase {
 
+    companion object {
+        private const val SORT_TOTAL_VOLUME = "total_volume"
+        private const val SORT_VOLUME = "volume"
+        private const val SORT_MARKET_CAP = "market_cap"
+    }
+
     override suspend fun getAllThemes(): List<ThemeResponse> =
         themeRepository.findAllByOrderByDisplayOrderAsc().map { theme ->
             ThemeResponse(
@@ -81,7 +87,7 @@ class ThemeService(
         }
 
         val sorted = when (sortBy) {
-            "total_volume" -> performances.sortedByDescending { it.totalVolume }
+            SORT_TOTAL_VOLUME -> performances.sortedByDescending { it.totalVolume }
             else -> performances.sortedByDescending { it.avgChangeRate }
         }
 
@@ -100,8 +106,8 @@ class ThemeService(
         }
 
         val sorted = when (sortBy) {
-            "volume" -> snapshots.sortedByDescending { it.volume }
-            "market_cap" -> snapshots.sortedByDescending { it.marketCap ?: 0L }
+            SORT_VOLUME -> snapshots.sortedByDescending { it.volume }
+            SORT_MARKET_CAP -> snapshots.sortedByDescending { it.marketCap ?: 0L }
             else -> snapshots.sortedByDescending { it.changeRate ?: BigDecimal.ZERO }
         }
 

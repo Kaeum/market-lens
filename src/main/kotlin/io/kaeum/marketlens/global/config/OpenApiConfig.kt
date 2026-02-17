@@ -8,11 +8,17 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class OpenApiConfig {
 
+    companion object {
+        private const val API_TITLE = "Market-Lens API"
+        private const val API_VERSION = "v1"
+        private const val API_DESCRIPTION = "K-Stock Real-time Theme Dashboard API"
+    }
+
     @Bean
     fun openApi(): OpenAPI = OpenAPI().info(
         Info()
-            .title("Market-Lens API")
-            .version("v1")
-            .description("K-Stock Real-time Theme Dashboard API")
+            .title(API_TITLE)
+            .version(API_VERSION)
+            .description(API_DESCRIPTION)
     )
 }

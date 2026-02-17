@@ -10,15 +10,21 @@ import org.springframework.web.reactive.function.server.bodyValueAndAwait
 @Component
 class StockHandler(private val stockQueryUseCase: StockQueryUseCase) {
 
+    companion object {
+        private const val PARAM_MARKET = "market"
+        private const val PARAM_SEARCH = "search"
+        private const val PATH_VAR_STOCK_CODE = "stockCode"
+    }
+
     suspend fun searchStocks(request: ServerRequest): ServerResponse {
-        val market = request.queryParam("market").orElse(null)
-        val keyword = request.queryParam("search").orElse(null)
+        val market = request.queryParam(PARAM_MARKET).orElse(null)
+        val keyword = request.queryParam(PARAM_SEARCH).orElse(null)
         val stocks = stockQueryUseCase.searchStocks(market, keyword)
         return ServerResponse.ok().bodyValueAndAwait(ApiResponse.ok(stocks))
     }
 
     suspend fun getStockDetail(request: ServerRequest): ServerResponse {
-        val stockCode = request.pathVariable("stockCode")
+        val stockCode = request.pathVariable(PATH_VAR_STOCK_CODE)
         val stock = stockQueryUseCase.getStockDetail(stockCode)
         return ServerResponse.ok().bodyValueAndAwait(ApiResponse.ok(stock))
     }

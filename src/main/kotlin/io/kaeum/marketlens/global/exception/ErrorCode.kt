@@ -15,4 +15,10 @@ enum class ErrorCode(
 
     // Stock
     STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "종목을 찾을 수 없습니다"),
+
+    // External API
+    EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "외부 API 호출 중 오류가 발생했습니다"),
+    KIS_TOKEN_ERROR(HttpStatus.UNAUTHORIZED, "KIS 토큰 발급/갱신에 실패했습니다"),
+    KIS_API_ERROR(HttpStatus.BAD_GATEWAY, "KIS API 호출 중 오류가 발생했습니다"),
+    KRX_API_ERROR(HttpStatus.BAD_GATEWAY, "KRX API 호출 중 오류가 발생했습니다"),
 }

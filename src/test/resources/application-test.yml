@@ -19,3 +19,13 @@ spring:
 
 kafka:
   bootstrap-servers: localhost:9092
+
+kis:
+  app-key: test-key
+  app-secret: test-secret
+  account-number: test-account
+  base-url: https://test.kis.com
+
+krx:
+  api-key: test-krx-key
+  base-url: https://test.krx.co.kr
