@@ -11,4 +11,7 @@ interface StockRepository : CoroutineCrudRepository<Stock, String> {
 
     @Query("SELECT * FROM stock WHERE is_active = true AND (stock_code ILIKE :keyword OR stock_name ILIKE :keyword)")
     suspend fun searchByKeyword(keyword: String): List<Stock>
+
+    @Query("SELECT * FROM stock WHERE stock_code IN (:stockCodes)")
+    suspend fun findByStockCodeIn(stockCodes: List<String>): List<Stock>
 }

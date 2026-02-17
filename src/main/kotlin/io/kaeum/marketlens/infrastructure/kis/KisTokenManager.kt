@@ -5,13 +5,19 @@ import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
 import io.kaeum.marketlens.global.util.withRetry
 import io.kaeum.marketlens.infrastructure.config.KisProperties
-import kotlinx.coroutines.runBlocking
+import jakarta.annotation.PreDestroy
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Profile
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
@@ -26,6 +32,7 @@ class KisTokenManager(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val mutex = Mutex()
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     companion object {
         private const val ENDPOINT_TOKEN = "/oauth2/tokenP"
@@ -33,10 +40,20 @@ class KisTokenManager(
         private const val KEY_APPKEY = "appkey"
         private const val KEY_APPSECRET = "appsecret"
         private const val GRANT_TYPE_CLIENT_CREDENTIALS = "client_credentials"
+        private const val TOKEN_CHECK_INTERVAL_MS = 600_000L
     }
 
     @Volatile
     private var currentToken: KisToken? = null
+
+    init {
+        scope.launch {
+            while (isActive) {
+                delay(TOKEN_CHECK_INTERVAL_MS)
+                checkAndRefreshToken()
+            }
+        }
+    }
 
     suspend fun getAccessToken(): String {
         currentToken?.let { token ->
@@ -53,6 +70,23 @@ class KisTokenManager(
                 }
             }
             refreshToken().accessToken
+        }
+    }
+
+    fun invalidateToken() {
+        currentToken = null
+        log.info("KIS access token invalidated (e.g. due to 401 response)")
+    }
+
+    private suspend fun checkAndRefreshToken() {
+        val token = currentToken ?: return
+        if (token.isExpiringSoon(kisProperties.tokenRefreshBeforeMinutes)) {
+            log.info("Scheduled token refresh triggered.")
+            try {
+                mutex.withLock { refreshToken() }
+            } catch (e: Exception) {
+                log.error("Scheduled token refresh failed: ${e.message}", e)
+            }
         }
     }
 
@@ -82,19 +116,9 @@ class KisTokenManager(
         return token
     }
 
-    @Scheduled(fixedRate = 600_000) // 10 minutes
-    fun scheduledTokenCheck() {
-        val token = currentToken ?: return
-        if (token.isExpiringSoon(kisProperties.tokenRefreshBeforeMinutes)) {
-            log.info("Scheduled token refresh triggered.")
-            runBlocking {
-                try {
-                    mutex.withLock { refreshToken() }
-                } catch (e: Exception) {
-                    log.error("Scheduled token refresh failed: ${e.message}", e)
-                }
-            }
-        }
+    @PreDestroy
+    fun destroy() {
+        scope.cancel()
     }
 
     data class KisToken(

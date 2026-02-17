@@ -62,14 +62,17 @@ class ThemeServiceTest {
     @Test
     fun `getThemeLeaders returns leaders sorted by change rate`() = runTest {
         val theme = Theme(themeId = 1, themeName = "semiconductor", themeNameKr = "반도체", displayOrder = 1)
+        val stockCodes = listOf("005930", "000660")
         coEvery { themeRepository.findById(1L) } returns theme
-        coEvery { themeStockRepository.findStockCodesByThemeId(1L) } returns listOf("005930", "000660")
-        coEvery { snapshotRepository.findByStockCodeIn(listOf("005930", "000660")) } returns listOf(
+        coEvery { themeStockRepository.findStockCodesByThemeId(1L) } returns stockCodes
+        coEvery { snapshotRepository.findByStockCodeIn(stockCodes) } returns listOf(
             StockPriceSnapshot("005930", 72000, BigDecimal("1.50"), 10000000, 430000000000000),
             StockPriceSnapshot("000660", 180000, BigDecimal("3.20"), 5000000, 130000000000000),
         )
-        coEvery { stockRepository.findById("000660") } returns Stock("000660", "SK하이닉스", "KOSPI")
-        coEvery { stockRepository.findById("005930") } returns Stock("005930", "삼성전자", "KOSPI")
+        coEvery { stockRepository.findByStockCodeIn(stockCodes) } returns listOf(
+            Stock("005930", "삼성전자", "KOSPI"),
+            Stock("000660", "SK하이닉스", "KOSPI"),
+        )
 
         val result = themeService.getThemeLeaders(1L, "change_rate", 10)
 
@@ -84,14 +87,17 @@ class ThemeServiceTest {
         val themes = listOf(
             Theme(themeId = 1, themeName = "semiconductor", themeNameKr = "반도체", displayOrder = 1),
         )
+        val stockCodes = listOf("005930", "000660")
         coEvery { themeRepository.findAllByOrderByDisplayOrderAsc() } returns themes
-        coEvery { themeStockRepository.findStockCodesByThemeId(1L) } returns listOf("005930", "000660")
-        coEvery { snapshotRepository.findByStockCodeIn(listOf("005930", "000660")) } returns listOf(
+        coEvery { themeStockRepository.findStockCodesByThemeId(1L) } returns stockCodes
+        coEvery { snapshotRepository.findByStockCodeIn(stockCodes) } returns listOf(
             StockPriceSnapshot("005930", 72000, BigDecimal("2.00"), 10000000, null),
             StockPriceSnapshot("000660", 180000, BigDecimal("4.00"), 5000000, null),
         )
-        coEvery { stockRepository.findById("005930") } returns Stock("005930", "삼성전자", "KOSPI")
-        coEvery { stockRepository.findById("000660") } returns Stock("000660", "SK하이닉스", "KOSPI")
+        coEvery { stockRepository.findByStockCodeIn(stockCodes) } returns listOf(
+            Stock("005930", "삼성전자", "KOSPI"),
+            Stock("000660", "SK하이닉스", "KOSPI"),
+        )
 
         val result = themeService.getThemePerformance("avg_change_rate", 15)
 

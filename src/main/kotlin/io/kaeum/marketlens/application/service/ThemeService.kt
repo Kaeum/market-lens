@@ -47,8 +47,10 @@ class ThemeService(
                 emptyList()
             }
 
-            val stockMap = stockCodes.associateWith { code ->
-                stockRepository.findById(code)
+            val stockMap = if (stockCodes.isNotEmpty()) {
+                stockRepository.findByStockCodeIn(stockCodes).associateBy { it.stockCode }
+            } else {
+                emptyMap()
             }
 
             val avgChangeRate = if (snapshots.isNotEmpty()) {
@@ -105,6 +107,12 @@ class ThemeService(
             emptyList()
         }
 
+        val stockMap = if (stockCodes.isNotEmpty()) {
+            stockRepository.findByStockCodeIn(stockCodes).associateBy { it.stockCode }
+        } else {
+            emptyMap()
+        }
+
         val sorted = when (sortBy) {
             SORT_VOLUME -> snapshots.sortedByDescending { it.volume }
             SORT_MARKET_CAP -> snapshots.sortedByDescending { it.marketCap ?: 0L }
@@ -112,7 +120,7 @@ class ThemeService(
         }
 
         val leaders = sorted.take(limit).map { snapshot ->
-            val stock = stockRepository.findById(snapshot.stockCode)
+            val stock = stockMap[snapshot.stockCode]
             StockSnapshotDto(
                 stockCode = snapshot.stockCode,
                 stockName = stock?.stockName ?: snapshot.stockCode,

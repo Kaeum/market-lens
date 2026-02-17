@@ -83,8 +83,14 @@ class KrxApiClient(
     }
 
     private fun guessMarket(stockCode: String): String {
-        // KOSDAQ codes typically start with certain patterns, but this is a fallback
-        return MARKET_KOSPI
+        // KOSDAQ 종목코드는 일반적으로 '2', '3', '4', '9'로 시작하거나 'A'로 시작하는 6자리 코드
+        // KOSPI 종목코드는 '0', '1', '5'로 시작하는 경향
+        // 이 로직은 MKT_NM 필드가 null인 경우의 폴백이므로, 완벽하지 않을 수 있음
+        val firstChar = stockCode.firstOrNull() ?: return MARKET_KOSPI
+        return when (firstChar) {
+            '2', '3', '4', '9' -> MARKET_KOSDAQ
+            else -> MARKET_KOSPI
+        }
     }
 
     private data class KrxStockListResponse(

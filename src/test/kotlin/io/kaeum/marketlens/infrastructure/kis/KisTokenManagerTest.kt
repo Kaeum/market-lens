@@ -40,6 +40,7 @@ class KisTokenManagerTest {
 
     @AfterEach
     fun tearDown() {
+        tokenManager.destroy()
         mockServer.shutdown()
     }
 
@@ -92,6 +93,21 @@ class KisTokenManagerTest {
         assertEquals("client_credentials", body["grant_type"])
         assertEquals("test-key", body["appkey"])
         assertEquals("test-secret", body["appsecret"])
+    }
+
+    @Test
+    fun `invalidateToken forces re-fetch on next getAccessToken call`() = runTest {
+        enqueueTokenResponse("first-token", 86400)
+        val first = tokenManager.getAccessToken()
+        assertEquals("first-token", first)
+        assertEquals(1, mockServer.requestCount)
+
+        tokenManager.invalidateToken()
+
+        enqueueTokenResponse("second-token", 86400)
+        val second = tokenManager.getAccessToken()
+        assertEquals("second-token", second)
+        assertEquals(2, mockServer.requestCount)
     }
 
     private fun enqueueTokenResponse(accessToken: String, expiresIn: Long) {
