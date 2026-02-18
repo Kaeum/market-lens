@@ -20,5 +20,8 @@ enum class ErrorCode(
     EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "외부 API 호출 중 오류가 발생했습니다"),
     KIS_TOKEN_ERROR(HttpStatus.UNAUTHORIZED, "KIS 토큰 발급/갱신에 실패했습니다"),
     KIS_API_ERROR(HttpStatus.BAD_GATEWAY, "KIS API 호출 중 오류가 발생했습니다"),
+    KIS_WEBSOCKET_CONNECTION_ERROR(HttpStatus.BAD_GATEWAY, "KIS WebSocket 연결에 실패했습니다"),
+    KIS_WEBSOCKET_SUBSCRIPTION_ERROR(HttpStatus.BAD_GATEWAY, "KIS WebSocket 구독에 실패했습니다"),
+    KIS_APPROVAL_KEY_ERROR(HttpStatus.UNAUTHORIZED, "KIS WebSocket 인증키 발급에 실패했습니다"),
     KRX_API_ERROR(HttpStatus.BAD_GATEWAY, "KRX API 호출 중 오류가 발생했습니다"),
 }

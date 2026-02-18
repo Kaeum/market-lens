@@ -41,8 +41,9 @@ dependencies {
     // Redis Reactive
     implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 
-    // Kafka (reactor-kafka)
+    // Kafka (reactor-kafka + spring-kafka for KafkaAdmin/NewTopic)
     implementation("io.projectreactor.kafka:reactor-kafka")
+    implementation("org.springframework.kafka:spring-kafka")
 
     // API 문서
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.4")

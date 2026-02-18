@@ -9,7 +9,8 @@ import io.kaeum.marketlens.global.util.withRetry
 import io.kaeum.marketlens.infrastructure.config.KisProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Profile
@@ -27,6 +28,7 @@ class KisApiClient(
     @Qualifier("kisWebClient") private val webClient: WebClient,
     private val kisProperties: KisProperties,
     private val tokenManager: KisTokenManager,
+    private val inMemoryTickProducer: InMemoryTickProducer,
 ) : StockPricePort {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -102,8 +104,19 @@ class KisApiClient(
     }
 
     override fun priceStream(stockCode: String): Flow<StockPriceSnapshot> {
-        // Phase 2-2에서 WebSocket 기반 구현 예정
-        return emptyFlow()
+        return inMemoryTickProducer.ticks
+            .filter { it.stockCode == stockCode }
+            .map { tick ->
+                StockPriceSnapshot(
+                    stockCode = tick.stockCode,
+                    currentPrice = tick.currentPrice,
+                    changeRate = tick.changeRate,
+                    volume = tick.accumulatedVolume,
+                    marketCap = null,
+                    tradingValue = tick.tradingValue,
+                    updatedAt = tick.eventTime,
+                )
+            }
     }
 
     private data class KisCurrentPriceResponse(

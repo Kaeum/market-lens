@@ -21,6 +21,7 @@ class KisApiClientTest {
 
     private lateinit var mockServer: MockWebServer
     private lateinit var tokenManager: KisTokenManager
+    private lateinit var inMemoryTickProducer: InMemoryTickProducer
     private lateinit var kisApiClient: KisApiClient
     private val objectMapper = ObjectMapper()
 
@@ -41,7 +42,8 @@ class KisApiClientTest {
             .build()
 
         tokenManager = mockk()
-        kisApiClient = KisApiClient(webClient, properties, tokenManager)
+        inMemoryTickProducer = InMemoryTickProducer()
+        kisApiClient = KisApiClient(webClient, properties, tokenManager, inMemoryTickProducer)
     }
 
     @AfterEach

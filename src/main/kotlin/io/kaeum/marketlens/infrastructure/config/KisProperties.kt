@@ -11,4 +11,9 @@ data class KisProperties(
     val tokenRefreshBeforeMinutes: Long = 30,
     val connectionTimeoutMs: Long = 5000,
     val readTimeoutMs: Long = 10000,
+    val wsUrl: String = "ws://ops.koreainvestment.com:21000",
+    val wsMaxSubscriptions: Int = 40,
+    val wsReconnectInitialDelayMs: Long = 1000,
+    val wsReconnectMaxDelayMs: Long = 60000,
+    val wsHeartbeatTimeoutMs: Long = 60000,
 )

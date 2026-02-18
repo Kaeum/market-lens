@@ -46,6 +46,11 @@ kis:
   token-refresh-before-minutes: 30
   connection-timeout-ms: 5000
   read-timeout-ms: 10000
+  ws-url: ${KIS_WS_URL:ws://ops.koreainvestment.com:21000}
+  ws-max-subscriptions: 40
+  ws-reconnect-initial-delay-ms: 1000
+  ws-reconnect-max-delay-ms: 60000
+  ws-heartbeat-timeout-ms: 60000
 
 krx:
   api-key: ${KRX_API_KEY:}
