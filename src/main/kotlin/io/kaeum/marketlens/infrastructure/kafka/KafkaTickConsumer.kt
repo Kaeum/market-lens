@@ -2,6 +2,7 @@ package io.kaeum.marketlens.infrastructure.kafka
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import io.kaeum.marketlens.application.port.out.SnapshotCachePort
 import io.kaeum.marketlens.domain.price.RealtimeTick
 import io.kaeum.marketlens.infrastructure.config.KafkaTopics
 import io.kaeum.marketlens.infrastructure.kis.InMemoryTickProducer
@@ -21,9 +22,10 @@ import reactor.kafka.receiver.ReceiverOptions
 
 @Component
 @Profile("!test")
-class TickKafkaConsumer(
+class KafkaTickConsumer(
     private val receiverOptions: ReceiverOptions<String, String>,
     private val inMemoryTickProducer: InMemoryTickProducer,
+    private val snapshotCachePort: SnapshotCachePort,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -40,6 +42,11 @@ class TickKafkaConsumer(
                 try {
                     val tick = objectMapper.readValue<RealtimeTick>(record.value())
                     scope.launch {
+                        try {
+                            snapshotCachePort.updateIfNewer(tick)
+                        } catch (e: Exception) {
+                            log.warn("Failed to update Redis snapshot for {}: {}", tick.stockCode, e.message)
+                        }
                         inMemoryTickProducer.emit(tick)
                     }
                 } catch (e: Exception) {

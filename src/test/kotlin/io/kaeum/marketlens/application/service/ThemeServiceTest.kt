@@ -1,13 +1,13 @@
 package io.kaeum.marketlens.application.service
 
 import io.kaeum.marketlens.domain.price.StockPriceSnapshot
-import io.kaeum.marketlens.domain.price.StockPriceSnapshotRepository
 import io.kaeum.marketlens.domain.stock.Stock
 import io.kaeum.marketlens.domain.stock.StockRepository
 import io.kaeum.marketlens.domain.theme.Theme
 import io.kaeum.marketlens.domain.theme.ThemeRepository
 import io.kaeum.marketlens.domain.theme.ThemeStockRepository
 import io.kaeum.marketlens.global.exception.BusinessException
+import io.kaeum.marketlens.infrastructure.redis.SnapshotReader
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -21,7 +21,7 @@ class ThemeServiceTest {
     private lateinit var themeRepository: ThemeRepository
     private lateinit var themeStockRepository: ThemeStockRepository
     private lateinit var stockRepository: StockRepository
-    private lateinit var snapshotRepository: StockPriceSnapshotRepository
+    private lateinit var snapshotReader: SnapshotReader
     private lateinit var themeService: ThemeService
 
     @BeforeEach
@@ -29,8 +29,8 @@ class ThemeServiceTest {
         themeRepository = mockk()
         themeStockRepository = mockk()
         stockRepository = mockk()
-        snapshotRepository = mockk()
-        themeService = ThemeService(themeRepository, themeStockRepository, stockRepository, snapshotRepository)
+        snapshotReader = mockk()
+        themeService = ThemeService(themeRepository, themeStockRepository, stockRepository, snapshotReader)
     }
 
     @Test
@@ -65,7 +65,7 @@ class ThemeServiceTest {
         val stockCodes = listOf("005930", "000660")
         coEvery { themeRepository.findById(1L) } returns theme
         coEvery { themeStockRepository.findStockCodesByThemeId(1L) } returns stockCodes
-        coEvery { snapshotRepository.findByStockCodeIn(stockCodes) } returns listOf(
+        coEvery { snapshotReader.findByStockCodeIn(stockCodes) } returns listOf(
             StockPriceSnapshot("005930", 72000, BigDecimal("1.50"), 10000000, 430000000000000),
             StockPriceSnapshot("000660", 180000, BigDecimal("3.20"), 5000000, 130000000000000),
         )
@@ -90,7 +90,7 @@ class ThemeServiceTest {
         val stockCodes = listOf("005930", "000660")
         coEvery { themeRepository.findAllByOrderByDisplayOrderAsc() } returns themes
         coEvery { themeStockRepository.findStockCodesByThemeId(1L) } returns stockCodes
-        coEvery { snapshotRepository.findByStockCodeIn(stockCodes) } returns listOf(
+        coEvery { snapshotReader.findByStockCodeIn(stockCodes) } returns listOf(
             StockPriceSnapshot("005930", 72000, BigDecimal("2.00"), 10000000, null),
             StockPriceSnapshot("000660", 180000, BigDecimal("4.00"), 5000000, null),
         )

@@ -2,12 +2,12 @@ package io.kaeum.marketlens.application.service
 
 import io.kaeum.marketlens.application.dto.*
 import io.kaeum.marketlens.application.port.`in`.ThemeQueryUseCase
-import io.kaeum.marketlens.domain.price.StockPriceSnapshotRepository
 import io.kaeum.marketlens.domain.stock.StockRepository
 import io.kaeum.marketlens.domain.theme.ThemeRepository
 import io.kaeum.marketlens.domain.theme.ThemeStockRepository
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
+import io.kaeum.marketlens.infrastructure.redis.SnapshotReader
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -17,7 +17,7 @@ class ThemeService(
     private val themeRepository: ThemeRepository,
     private val themeStockRepository: ThemeStockRepository,
     private val stockRepository: StockRepository,
-    private val snapshotRepository: StockPriceSnapshotRepository,
+    private val snapshotReader: SnapshotReader,
 ) : ThemeQueryUseCase {
 
     companion object {
@@ -42,7 +42,7 @@ class ThemeService(
         val performances = themes.map { theme ->
             val stockCodes = themeStockRepository.findStockCodesByThemeId(theme.themeId!!)
             val snapshots = if (stockCodes.isNotEmpty()) {
-                snapshotRepository.findByStockCodeIn(stockCodes)
+                snapshotReader.findByStockCodeIn(stockCodes)
             } else {
                 emptyList()
             }
@@ -102,7 +102,7 @@ class ThemeService(
 
         val stockCodes = themeStockRepository.findStockCodesByThemeId(themeId)
         val snapshots = if (stockCodes.isNotEmpty()) {
-            snapshotRepository.findByStockCodeIn(stockCodes)
+            snapshotReader.findByStockCodeIn(stockCodes)
         } else {
             emptyList()
         }

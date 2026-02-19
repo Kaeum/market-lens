@@ -17,7 +17,7 @@ import java.time.Instant
 import java.time.LocalTime
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class TickKafkaConsumerTest {
+class KafkaTickConsumerTest {
 
     private val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
     private val inMemoryTickProducer = InMemoryTickProducer()

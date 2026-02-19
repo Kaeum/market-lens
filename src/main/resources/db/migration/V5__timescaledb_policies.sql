@@ -1,3 +1,5 @@
+-- flyway:executeInTransaction=false
+
 -- 7일 이상 된 청크 압축
 ALTER TABLE stock_price SET (
     timescaledb.compress,

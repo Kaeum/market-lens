@@ -2,16 +2,16 @@ package io.kaeum.marketlens.application.service
 
 import io.kaeum.marketlens.application.dto.StockResponse
 import io.kaeum.marketlens.application.port.`in`.StockQueryUseCase
-import io.kaeum.marketlens.domain.price.StockPriceSnapshotRepository
 import io.kaeum.marketlens.domain.stock.StockRepository
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
+import io.kaeum.marketlens.infrastructure.redis.SnapshotReader
 import org.springframework.stereotype.Service
 
 @Service
 class StockService(
     private val stockRepository: StockRepository,
-    private val snapshotRepository: StockPriceSnapshotRepository,
+    private val snapshotReader: SnapshotReader,
 ) : StockQueryUseCase {
 
     override suspend fun searchStocks(market: String?, keyword: String?): List<StockResponse> {
@@ -23,7 +23,7 @@ class StockService(
 
         val stockCodes = stocks.map { it.stockCode }
         val snapshots = if (stockCodes.isNotEmpty()) {
-            snapshotRepository.findByStockCodeIn(stockCodes).associateBy { it.stockCode }
+            snapshotReader.findByStockCodeIn(stockCodes).associateBy { it.stockCode }
         } else {
             emptyMap()
         }
@@ -46,7 +46,7 @@ class StockService(
         val stock = stockRepository.findById(stockCode)
             ?: throw BusinessException(ErrorCode.STOCK_NOT_FOUND)
 
-        val snapshot = snapshotRepository.findById(stockCode)
+        val snapshot = snapshotReader.findById(stockCode)
 
         return StockResponse(
             stockCode = stock.stockCode,
