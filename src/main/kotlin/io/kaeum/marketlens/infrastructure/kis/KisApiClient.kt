@@ -21,6 +21,8 @@ import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.client.awaitExchange
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Component
 @Profile("!test")
@@ -45,8 +47,13 @@ class KisApiClient(
         private const val PARAM_MARKET_DIV_CODE = "FID_COND_MRKT_DIV_CODE"
         private const val PARAM_INPUT_ISCD = "FID_INPUT_ISCD"
         private const val MARKET_DIV_CODE_ALL = "J"
+        private const val ENDPOINT_INVESTOR_FLOW = "/uapi/domestic-stock/v1/quotations/inquire-investor"
+        private const val TR_ID_INVESTOR_FLOW = "FHKST01010900"
+        private const val PARAM_INPUT_DATE_1 = "FID_INPUT_DATE_1"
+        private const val PARAM_INPUT_DATE_2 = "FID_INPUT_DATE_2"
         private const val RESPONSE_SUCCESS_CODE = "0"
         private const val RATE_LIMIT_DELAY_MS = 100L
+        private val KIS_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
     }
 
     suspend fun getCurrentPrice(stockCode: String): StockPriceSnapshot {
@@ -118,6 +125,83 @@ class KisApiClient(
                 )
             }
     }
+
+    suspend fun fetchInvestorFlow(stockCode: String, startDate: LocalDate, endDate: LocalDate): List<InvestorFlowItem> {
+        return withRetry(maxAttempts = 3, initialDelayMs = 1000) {
+            val token = tokenManager.getAccessToken()
+
+            val response = webClient.get()
+                .uri { builder ->
+                    builder.path(ENDPOINT_INVESTOR_FLOW)
+                        .queryParam(PARAM_MARKET_DIV_CODE, MARKET_DIV_CODE_ALL)
+                        .queryParam(PARAM_INPUT_ISCD, stockCode)
+                        .queryParam(PARAM_INPUT_DATE_1, startDate.format(KIS_DATE_FORMATTER))
+                        .queryParam(PARAM_INPUT_DATE_2, endDate.format(KIS_DATE_FORMATTER))
+                        .build()
+                }
+                .header(HEADER_AUTHORIZATION, "Bearer $token")
+                .header(HEADER_APPKEY, kisProperties.appKey)
+                .header(HEADER_APPSECRET, kisProperties.appSecret)
+                .header(HEADER_TR_ID, TR_ID_INVESTOR_FLOW)
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
+                .awaitExchange { clientResponse ->
+                    if (clientResponse.statusCode() == HttpStatusCode.valueOf(401)) {
+                        tokenManager.getAccessToken()
+                        throw BusinessException(ErrorCode.KIS_TOKEN_ERROR)
+                    }
+                    if (clientResponse.statusCode().isError) {
+                        throw BusinessException(ErrorCode.KIS_API_ERROR)
+                    }
+                    clientResponse.awaitBody<KisInvestorFlowResponse>()
+                }
+
+            if (response.rtCd != RESPONSE_SUCCESS_CODE) {
+                log.error("KIS investor flow API error: code={}, message={}", response.msgCd, response.msg1)
+                throw BusinessException(ErrorCode.KIS_API_ERROR)
+            }
+
+            response.output.map { output ->
+                InvestorFlowItem(
+                    investorName = output.investorName,
+                    sellVolume = output.sellVolume.parseKisLong(),
+                    buyVolume = output.buyVolume.parseKisLong(),
+                    netVolume = output.netVolume.parseKisLong(),
+                    sellAmount = output.sellAmount.parseKisLong(),
+                    buyAmount = output.buyAmount.parseKisLong(),
+                    netAmount = output.netAmount.parseKisLong(),
+                )
+            }
+        }
+    }
+
+    data class InvestorFlowItem(
+        val investorName: String,
+        val sellVolume: Long,
+        val buyVolume: Long,
+        val netVolume: Long,
+        val sellAmount: Long,
+        val buyAmount: Long,
+        val netAmount: Long,
+    )
+
+    private fun String.parseKisLong(): Long = replace(",", "").toLongOrNull() ?: 0L
+
+    private data class KisInvestorFlowResponse(
+        @JsonProperty("rt_cd") val rtCd: String,
+        @JsonProperty("msg_cd") val msgCd: String,
+        @JsonProperty("msg1") val msg1: String,
+        @JsonProperty("output") val output: List<KisInvestorFlowOutput> = emptyList(),
+    )
+
+    private data class KisInvestorFlowOutput(
+        @JsonProperty("invst_nm") val investorName: String,
+        @JsonProperty("seln_vol") val sellVolume: String,
+        @JsonProperty("shnu_vol") val buyVolume: String,
+        @JsonProperty("ntby_qty") val netVolume: String,
+        @JsonProperty("seln_tr_pbmn") val sellAmount: String,
+        @JsonProperty("shnu_tr_pbmn") val buyAmount: String,
+        @JsonProperty("ntby_tr_pbmn") val netAmount: String,
+    )
 
     private data class KisCurrentPriceResponse(
         @JsonProperty("rt_cd") val rtCd: String,

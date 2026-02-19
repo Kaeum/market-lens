@@ -3,6 +3,7 @@ package io.kaeum.marketlens.infrastructure.krx
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.kaeum.marketlens.application.port.out.StockMasterData
 import io.kaeum.marketlens.application.port.out.StockMasterPort
+import io.kaeum.marketlens.domain.price.StockDailyPrice
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
 import io.kaeum.marketlens.global.util.withRetry
@@ -14,6 +15,9 @@ import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Component
 @Primary
@@ -27,12 +31,16 @@ class KrxApiClient(
 
     companion object {
         private const val ENDPOINT_STOCK_ISU_BASE_INFO = "/svc/apis/sto/stk_isu_base_info"
+        private const val ENDPOINT_KOSPI_DAILY = "/svc/apis/sto/stk_bdd_trd"
+        private const val ENDPOINT_KOSDAQ_DAILY = "/svc/apis/sto/ksq_bdd_trd"
         private const val PARAM_AUTH_KEY = "AUTH_KEY"
         private const val PARAM_MKT_TYPE = "MKT_TYPE"
+        private const val PARAM_BAS_DD = "BAS_DD"
         private const val MARKET_KOSPI = "KOSPI"
         private const val MARKET_KOSDAQ = "KOSDAQ"
         private const val MKT_TYPE_STK = "STK"
         private const val MKT_TYPE_KSQ = "KSQ"
+        private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd")
     }
 
     override suspend fun fetchAllStocks(): List<StockMasterData> {
@@ -93,6 +101,39 @@ class KrxApiClient(
         }
     }
 
+    suspend fun fetchDailyOhlcv(date: LocalDate, market: String): List<StockDailyPrice> {
+        return withRetry(maxAttempts = 3, initialDelayMs = 2000) {
+            fetchOhlcv(date, market)
+        }
+    }
+
+    private suspend fun fetchOhlcv(date: LocalDate, market: String): List<StockDailyPrice> {
+        val endpoint = when (market.uppercase()) {
+            MARKET_KOSPI -> ENDPOINT_KOSPI_DAILY
+            MARKET_KOSDAQ -> ENDPOINT_KOSDAQ_DAILY
+            else -> throw BusinessException(ErrorCode.INVALID_INPUT)
+        }
+
+        try {
+            val response = webClient.get()
+                .uri { builder ->
+                    builder.path(endpoint)
+                        .queryParam(PARAM_AUTH_KEY, krxProperties.apiKey)
+                        .queryParam(PARAM_BAS_DD, date.format(DATE_FORMATTER))
+                        .build()
+                }
+                .retrieve()
+                .awaitBody<KrxOhlcvResponse>()
+
+            return response.output.mapNotNull { item -> item.toStockDailyPrice(date) }
+        } catch (e: BusinessException) {
+            throw e
+        } catch (e: Exception) {
+            log.error("KRX OHLCV API call failed for date={}, market={}: {}", date, market, e.message, e)
+            throw BusinessException(ErrorCode.KRX_API_ERROR)
+        }
+    }
+
     private data class KrxStockListResponse(
         @JsonProperty("OutBlock_1") val output: List<KrxStockItem> = emptyList(),
     )
@@ -102,4 +143,35 @@ class KrxApiClient(
         @JsonProperty("ISU_NM") val isuNm: String,
         @JsonProperty("MKT_NM") val mktName: String?,
     )
+
+    private data class KrxOhlcvResponse(
+        @JsonProperty("OutBlock_1") val output: List<KrxOhlcvItem> = emptyList(),
+    )
+
+    private data class KrxOhlcvItem(
+        @JsonProperty("ISU_SRT_CD") val stockCode: String,
+        @JsonProperty("TDD_OPNPRC") val openPrice: String?,
+        @JsonProperty("TDD_HGPRC") val highPrice: String?,
+        @JsonProperty("TDD_LWPRC") val lowPrice: String?,
+        @JsonProperty("TDD_CLSPRC") val closePrice: String?,
+        @JsonProperty("ACC_TRDVOL") val volume: String?,
+        @JsonProperty("FLUC_RT") val changeRate: String?,
+        @JsonProperty("MKTCAP") val marketCap: String?,
+    ) {
+        fun toStockDailyPrice(date: LocalDate): StockDailyPrice? {
+            val close = closePrice?.replace(",", "")?.toLongOrNull() ?: return null
+            if (close <= 0) return null
+            return StockDailyPrice(
+                stockCode = stockCode,
+                date = date,
+                openPrice = openPrice?.replace(",", "")?.toLongOrNull() ?: close,
+                highPrice = highPrice?.replace(",", "")?.toLongOrNull() ?: close,
+                lowPrice = lowPrice?.replace(",", "")?.toLongOrNull() ?: close,
+                closePrice = close,
+                volume = volume?.replace(",", "")?.toLongOrNull() ?: 0,
+                changeRate = changeRate?.toBigDecimalOrNull(),
+                marketCap = marketCap?.replace(",", "")?.toLongOrNull(),
+            )
+        }
+    }
 }

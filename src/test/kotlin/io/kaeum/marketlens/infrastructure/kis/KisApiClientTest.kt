@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import java.time.LocalDate
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -169,5 +170,99 @@ class KisApiClientTest {
         assertEquals(2, result.size)
         assertEquals(72000L, result[0].currentPrice)
         assertEquals(180000L, result[1].currentPrice)
+    }
+
+    @Test
+    fun `fetchInvestorFlow parses successful response with comma numbers and negative values`() = runTest {
+        coEvery { tokenManager.getAccessToken() } returns "test-token"
+
+        val responseBody = objectMapper.writeValueAsString(
+            mapOf(
+                "rt_cd" to "0",
+                "msg_cd" to "MCA00000",
+                "msg1" to "정상처리 되었습니다",
+                "output" to listOf(
+                    mapOf(
+                        "invst_nm" to "개인",
+                        "seln_vol" to "1,500,000",
+                        "shnu_vol" to "1,200,000",
+                        "ntby_qty" to "-300,000",
+                        "seln_tr_pbmn" to "108,000,000,000",
+                        "shnu_tr_pbmn" to "86,400,000,000",
+                        "ntby_tr_pbmn" to "-21,600,000,000",
+                    ),
+                    mapOf(
+                        "invst_nm" to "외국인",
+                        "seln_vol" to "500,000",
+                        "shnu_vol" to "800,000",
+                        "ntby_qty" to "300,000",
+                        "seln_tr_pbmn" to "36,000,000,000",
+                        "shnu_tr_pbmn" to "57,600,000,000",
+                        "ntby_tr_pbmn" to "21,600,000,000",
+                    ),
+                ),
+            )
+        )
+        mockServer.enqueue(
+            MockResponse()
+                .setBody(responseBody)
+                .addHeader("Content-Type", "application/json")
+        )
+
+        val result = kisApiClient.fetchInvestorFlow(
+            "005930",
+            LocalDate.of(2026, 2, 12),
+            LocalDate.of(2026, 2, 19),
+        )
+
+        assertEquals(2, result.size)
+
+        val individual = result[0]
+        assertEquals("개인", individual.investorName)
+        assertEquals(1_500_000L, individual.sellVolume)
+        assertEquals(1_200_000L, individual.buyVolume)
+        assertEquals(-300_000L, individual.netVolume)
+        assertEquals(108_000_000_000L, individual.sellAmount)
+        assertEquals(86_400_000_000L, individual.buyAmount)
+        assertEquals(-21_600_000_000L, individual.netAmount)
+
+        val foreigner = result[1]
+        assertEquals("외국인", foreigner.investorName)
+        assertEquals(300_000L, foreigner.netVolume)
+
+        val request = mockServer.takeRequest()
+        assertTrue(request.path!!.contains("FID_INPUT_ISCD=005930"))
+        assertTrue(request.path!!.contains("FID_INPUT_DATE_1=20260212"))
+        assertTrue(request.path!!.contains("FID_INPUT_DATE_2=20260219"))
+        assertEquals("FHKST01010900", request.getHeader("tr_id"))
+    }
+
+    @Test
+    fun `fetchInvestorFlow throws on KIS error response`() = runTest {
+        coEvery { tokenManager.getAccessToken() } returns "test-token"
+
+        val responseBody = objectMapper.writeValueAsString(
+            mapOf(
+                "rt_cd" to "1",
+                "msg_cd" to "EGW00000",
+                "msg1" to "에러가 발생했습니다",
+                "output" to emptyList<Any>(),
+            )
+        )
+        repeat(3) {
+            mockServer.enqueue(
+                MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+            )
+        }
+
+        assertThrows<BusinessException> {
+            kisApiClient.fetchInvestorFlow(
+                "005930",
+                LocalDate.of(2026, 2, 12),
+                LocalDate.of(2026, 2, 19),
+            )
+        }
     }
 }
