@@ -25,6 +25,15 @@ krx:
   api-key: test-krx-key
   base-url: https://test.krx.co.kr
 
+naver:
+  client-id: test-naver-id
+  client-secret: test-naver-secret
+  base-url: https://test.naver.com
+
+dart:
+  api-key: test-dart-key
+  base-url: https://test.dart.fss.or.kr
+
 logging:
   level:
     io.kaeum.marketlens: DEBUG

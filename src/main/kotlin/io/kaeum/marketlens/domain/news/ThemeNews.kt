@@ -2,6 +2,7 @@ package io.kaeum.marketlens.domain.news
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
+import java.math.BigDecimal
 import java.time.Instant
 
 @Table("theme_news")
@@ -13,4 +14,5 @@ data class ThemeNews(
     val sourceUrl: String,
     val publishedAt: Instant,
     val createdAt: Instant = Instant.now(),
+    val sentimentScore: BigDecimal? = null,
 )

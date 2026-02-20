@@ -24,4 +24,6 @@ enum class ErrorCode(
     KIS_WEBSOCKET_SUBSCRIPTION_ERROR(HttpStatus.BAD_GATEWAY, "KIS WebSocket 구독에 실패했습니다"),
     KIS_APPROVAL_KEY_ERROR(HttpStatus.UNAUTHORIZED, "KIS WebSocket 인증키 발급에 실패했습니다"),
     KRX_API_ERROR(HttpStatus.BAD_GATEWAY, "KRX API 호출 중 오류가 발생했습니다"),
+    NAVER_API_ERROR(HttpStatus.BAD_GATEWAY, "네이버 검색 API 호출 중 오류가 발생했습니다"),
+    DART_API_ERROR(HttpStatus.BAD_GATEWAY, "DART 공시 API 호출 중 오류가 발생했습니다"),
 }

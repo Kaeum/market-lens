@@ -24,6 +24,7 @@ class KafkaConfig(
         private const val ACKS_ALL = "all"
         private const val OFFSET_RESET_LATEST = "latest"
         private const val TICKER_RAW_PARTITIONS = 16
+        private const val NEWS_RAW_PARTITIONS = 8
         private const val REPLICATION_FACTOR: Short = 1
     }
 
@@ -56,5 +57,10 @@ class KafkaConfig(
     @Bean
     fun tickerRawTopic(): NewTopic {
         return NewTopic(KafkaTopics.TICK_RAW, TICKER_RAW_PARTITIONS, REPLICATION_FACTOR)
+    }
+
+    @Bean
+    fun newsRawTopic(): NewTopic {
+        return NewTopic(KafkaTopics.NEWS_RAW, NEWS_RAW_PARTITIONS, REPLICATION_FACTOR)
     }
 }

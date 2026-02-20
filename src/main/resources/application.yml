@@ -60,7 +60,13 @@ krx:
 
 dart:
   api-key: ${DART_API_KEY:}
+  base-url: ${DART_BASE_URL:https://opendart.fss.or.kr/api}
+  connection-timeout-ms: 5000
+  read-timeout-ms: 10000
 
 naver:
   client-id: ${NAVER_CLIENT_ID:}
   client-secret: ${NAVER_CLIENT_SECRET:}
+  base-url: ${NAVER_BASE_URL:https://openapi.naver.com}
+  connection-timeout-ms: 5000
+  read-timeout-ms: 10000
