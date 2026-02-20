@@ -2,6 +2,8 @@ package io.kaeum.marketlens.infrastructure.redis
 
 import io.kaeum.marketlens.application.port.out.SnapshotCachePort
 import io.kaeum.marketlens.domain.price.StockPriceSnapshot
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineScope
@@ -25,9 +27,14 @@ import reactor.core.publisher.Mono
 class SnapshotBatchFlusher(
     private val snapshotCachePort: SnapshotCachePort,
     private val databaseClient: DatabaseClient,
+    private val meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val flushTimer = Timer.builder("snapshot.flush.duration")
+        .description("Snapshot flush cycle duration")
+        .register(meterRegistry)
+    private val flushStocksCounter by lazy { meterRegistry.counter("snapshot.flush.stocks") }
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var job: Job? = null
 
@@ -63,6 +70,7 @@ class SnapshotBatchFlusher(
         val dirtyCodes = snapshotCachePort.drainDirtyCodes()
         if (dirtyCodes.isEmpty()) return
 
+        val sample = Timer.start(meterRegistry)
         val snapshots = snapshotCachePort.getSnapshots(dirtyCodes.toList())
         if (snapshots.isEmpty()) return
 
@@ -76,7 +84,9 @@ class SnapshotBatchFlusher(
             }
         }
 
+        sample.stop(flushTimer)
         if (upserted > 0) {
+            flushStocksCounter.increment(upserted.toDouble())
             log.debug("Flushed {} snapshots to DB", upserted)
         }
     }

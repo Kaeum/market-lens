@@ -1,5 +1,8 @@
 package io.kaeum.marketlens.infrastructure.news
 
+import io.kaeum.marketlens.infrastructure.config.MarketTimeScheduler
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineScope
@@ -27,11 +30,20 @@ class NewsCollector(
     private val dartApiClient: DartApiClient,
     private val newsStockMapper: NewsStockMapper,
     private val databaseClient: DatabaseClient,
+    private val marketTimeScheduler: MarketTimeScheduler,
+    private val meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var pollingJob: Job? = null
+
+    private val timer = Timer.builder("collector.news.duration")
+        .description("News collection cycle duration")
+        .register(meterRegistry)
+    private val itemsCounter = meterRegistry.counter("collector.news.items", "source", "total")
+    private val naverItemsCounter = meterRegistry.counter("collector.news.items", "source", "naver")
+    private val dartItemsCounter = meterRegistry.counter("collector.news.items", "source", "dart")
 
     @PostConstruct
     fun init() {
@@ -39,8 +51,15 @@ class NewsCollector(
             // 초기 사전 로드 대기
             delay(INITIAL_DELAY_MS)
             while (isActive) {
+                if (!marketTimeScheduler.isTradingDay()) {
+                    log.debug("Non-trading day, skipping news polling")
+                    delay(NON_TRADING_DAY_CHECK_INTERVAL_MS)
+                    continue
+                }
                 try {
+                    val sample = Timer.start(meterRegistry)
                     runPollingCycle()
+                    sample.stop(timer)
                 } catch (e: Exception) {
                     log.error("News polling cycle failed: {}", e.message, e)
                 }
@@ -76,6 +95,9 @@ class NewsCollector(
             log.warn("DART disclosure collection failed: {}", e.message)
         }
 
+        naverItemsCounter.increment(naverCount.toDouble())
+        dartItemsCounter.increment(dartCount.toDouble())
+        itemsCounter.increment((naverCount + dartCount).toDouble())
         log.info("News collection cycle completed: naver={}, dart={}", naverCount, dartCount)
     }
 
@@ -272,6 +294,7 @@ class NewsCollector(
         private val MARKET_CLOSE = LocalTime.of(15, 30)
 
         private const val INITIAL_DELAY_MS = 10_000L
+        private const val NON_TRADING_DAY_CHECK_INTERVAL_MS = 60 * 60 * 1000L // 1시간
         private const val POLLING_INTERVAL_MARKET_HOURS_MS = 5 * 60 * 1000L  // 5분
         private const val POLLING_INTERVAL_OFF_HOURS_MS = 30 * 60 * 1000L    // 30분
         private const val RATE_LIMIT_DELAY_MS = 200L

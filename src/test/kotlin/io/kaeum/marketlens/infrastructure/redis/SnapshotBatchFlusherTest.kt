@@ -2,6 +2,7 @@ package io.kaeum.marketlens.infrastructure.redis
 
 import io.kaeum.marketlens.application.port.out.SnapshotCachePort
 import io.kaeum.marketlens.domain.price.StockPriceSnapshot
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -25,7 +26,7 @@ class SnapshotBatchFlusherTest {
     fun setUp() {
         snapshotCachePort = mockk()
         databaseClient = mockk()
-        flusher = SnapshotBatchFlusher(snapshotCachePort, databaseClient)
+        flusher = SnapshotBatchFlusher(snapshotCachePort, databaseClient, SimpleMeterRegistry())
     }
 
     @Test

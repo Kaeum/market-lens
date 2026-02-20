@@ -1,6 +1,8 @@
 package io.kaeum.marketlens.infrastructure.krx
 
 import io.kaeum.marketlens.domain.price.StockDailyPrice
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +23,13 @@ import java.time.ZoneId
 class KrxHistoricalCollector(
     private val krxApiClient: KrxApiClient,
     private val databaseClient: DatabaseClient,
+    private val meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = Timer.builder("collector.historical.duration")
+        .description("Historical data daily batch duration")
+        .register(meterRegistry)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     @PostConstruct
@@ -98,6 +104,7 @@ class KrxHistoricalCollector(
     }
 
     suspend fun runDailyBatch() {
+        val sample = Timer.start(meterRegistry)
         val yesterday = LocalDate.now(KST).minusDays(1)
         if (isWeekend(yesterday)) {
             log.info("Skipping daily batch for weekend date={}", yesterday)
@@ -105,6 +112,7 @@ class KrxHistoricalCollector(
         }
         log.info("Running daily batch for date={}", yesterday)
         val inserted = collectDate(yesterday)
+        sample.stop(timer)
         log.info("Daily batch completed: {} rows inserted for date={}", inserted, yesterday)
     }
 

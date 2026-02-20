@@ -1,6 +1,7 @@
 package io.kaeum.marketlens.infrastructure.krx
 
 import io.kaeum.marketlens.domain.correlation.StockCorrelation
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -26,7 +27,7 @@ class CorrelationCalculatorTest {
     @BeforeEach
     fun setUp() {
         databaseClient = mockk()
-        calculator = CorrelationCalculator(databaseClient)
+        calculator = CorrelationCalculator(databaseClient, SimpleMeterRegistry())
     }
 
     @Test

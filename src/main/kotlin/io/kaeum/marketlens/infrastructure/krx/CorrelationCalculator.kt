@@ -1,6 +1,8 @@
 package io.kaeum.marketlens.infrastructure.krx
 
 import io.kaeum.marketlens.domain.correlation.StockCorrelation
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,9 +24,13 @@ import kotlin.math.sqrt
 @Profile("!test")
 class CorrelationCalculator(
     private val databaseClient: DatabaseClient,
+    private val meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = Timer.builder("collector.correlation.duration")
+        .description("Correlation calculation batch duration")
+        .register(meterRegistry)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     @PostConstruct
@@ -57,6 +63,7 @@ class CorrelationCalculator(
     }
 
     suspend fun runDailyBatch() {
+        val sample = Timer.start(meterRegistry)
         val themeGroups = fetchThemeStockGroups()
         if (themeGroups.isEmpty()) {
             log.info("No theme-stock groups found, skipping correlation calculation")
@@ -96,8 +103,10 @@ class CorrelationCalculator(
 
         if (correlations.isNotEmpty()) {
             batchUpsert(correlations)
+            sample.stop(timer)
             log.info("Correlation calculation completed: {} pairs upserted", correlations.size)
         } else {
+            sample.stop(timer)
             log.info("No valid correlation pairs computed (insufficient overlap or constant prices)")
         }
     }

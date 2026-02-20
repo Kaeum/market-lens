@@ -1,6 +1,7 @@
 package io.kaeum.marketlens.infrastructure.krx
 
 import io.kaeum.marketlens.domain.price.StockDailyPrice
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -24,7 +25,7 @@ class KrxHistoricalCollectorTest {
     fun setUp() {
         krxApiClient = mockk()
         databaseClient = mockk()
-        collector = KrxHistoricalCollector(krxApiClient, databaseClient)
+        collector = KrxHistoricalCollector(krxApiClient, databaseClient, SimpleMeterRegistry())
     }
 
     @Test

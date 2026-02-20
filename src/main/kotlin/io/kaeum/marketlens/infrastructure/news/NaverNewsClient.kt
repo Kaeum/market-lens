@@ -3,6 +3,8 @@ package io.kaeum.marketlens.infrastructure.news
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
 import io.kaeum.marketlens.infrastructure.config.NaverProperties
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
@@ -20,11 +22,17 @@ import java.util.Locale
 class NaverNewsClient(
     @Qualifier("naverWebClient") private val webClient: WebClient,
     private val naverProperties: NaverProperties,
+    meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = Timer.builder("api.naver.duration")
+        .description("Naver news API call duration")
+        .register(meterRegistry)
+    private val errorCounter = meterRegistry.counter("api.naver.errors")
 
     suspend fun searchNews(query: String, display: Int = 100, sort: String = "date"): List<NaverNewsItem> {
+        val sample = Timer.start()
         var lastException: Exception? = null
 
         repeat(MAX_RETRY_ATTEMPTS) { attempt ->
@@ -43,9 +51,12 @@ class NaverNewsClient(
                     .bodyToMono<NaverSearchResponse>()
                     .awaitSingleOrNull()
 
-                return response?.items?.map { it.toDomain() } ?: emptyList()
+                val result = response?.items?.map { it.toDomain() } ?: emptyList()
+                sample.stop(timer)
+                return result
             } catch (e: Exception) {
                 lastException = e
+                errorCounter.increment()
                 log.warn("Naver news search failed for query='{}', attempt {}/{}: {}", query, attempt + 1, MAX_RETRY_ATTEMPTS, e.message)
             }
         }

@@ -1,5 +1,7 @@
 package io.kaeum.marketlens.infrastructure.kis
 
+import io.kaeum.marketlens.infrastructure.config.MarketTimeScheduler
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -24,7 +26,9 @@ class InvestorFlowCollectorTest {
     fun setUp() {
         kisApiClient = mockk()
         databaseClient = mockk()
-        collector = InvestorFlowCollector(kisApiClient, databaseClient)
+        val marketTimeScheduler = mockk<MarketTimeScheduler>()
+        every { marketTimeScheduler.isTradingDay() } returns true
+        collector = InvestorFlowCollector(kisApiClient, databaseClient, marketTimeScheduler, SimpleMeterRegistry())
     }
 
     @Test

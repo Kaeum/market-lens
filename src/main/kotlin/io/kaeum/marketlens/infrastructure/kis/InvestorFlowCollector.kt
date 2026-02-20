@@ -1,6 +1,9 @@
 package io.kaeum.marketlens.infrastructure.kis
 
 import io.kaeum.marketlens.domain.investorflow.InvestorFlow
+import io.kaeum.marketlens.infrastructure.config.MarketTimeScheduler
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineScope
@@ -24,19 +27,36 @@ import java.time.ZoneId
 class InvestorFlowCollector(
     private val kisApiClient: KisApiClient,
     private val databaseClient: DatabaseClient,
+    private val marketTimeScheduler: MarketTimeScheduler,
+    private val meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var pollingJob: Job? = null
 
+    private val timer = Timer.builder("collector.investor_flow.duration")
+        .description("Investor flow collection cycle duration")
+        .register(meterRegistry)
+    private val successCounter = meterRegistry.counter("collector.investor_flow.success")
+    private val failureCounter = meterRegistry.counter("collector.investor_flow.failure")
+
     @PostConstruct
     fun init() {
         pollingJob = scope.launch {
             while (isActive) {
+                if (!marketTimeScheduler.isTradingDay()) {
+                    log.debug("Non-trading day, skipping investor flow polling")
+                    delay(NON_TRADING_DAY_CHECK_INTERVAL_MS)
+                    continue
+                }
                 try {
+                    val sample = Timer.start(meterRegistry)
                     runPollingCycle()
+                    sample.stop(timer)
+                    successCounter.increment()
                 } catch (e: Exception) {
+                    failureCounter.increment()
                     log.error("Investor flow polling cycle failed: {}", e.message, e)
                 }
                 delay(POLLING_INTERVAL_MS)
@@ -195,6 +215,7 @@ class InvestorFlowCollector(
     companion object {
         private val KST = ZoneId.of("Asia/Seoul")
         private const val POLLING_INTERVAL_MS = 20 * 60 * 1000L // 20 minutes
+        private const val NON_TRADING_DAY_CHECK_INTERVAL_MS = 60 * 60 * 1000L // 1 hour
         private const val RATE_LIMIT_DELAY_MS = 200L
         private const val BATCH_SIZE = 100
         private const val LOOKBACK_TRADING_DAYS = 5

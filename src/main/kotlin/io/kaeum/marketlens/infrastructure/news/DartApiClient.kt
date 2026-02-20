@@ -3,6 +3,8 @@ package io.kaeum.marketlens.infrastructure.news
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
 import io.kaeum.marketlens.infrastructure.config.DartProperties
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
@@ -16,11 +18,17 @@ import org.springframework.web.reactive.function.client.bodyToMono
 class DartApiClient(
     @Qualifier("dartWebClient") private val webClient: WebClient,
     private val dartProperties: DartProperties,
+    meterRegistry: MeterRegistry,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = Timer.builder("api.dart.duration")
+        .description("DART API call duration")
+        .register(meterRegistry)
+    private val errorCounter = meterRegistry.counter("api.dart.errors")
 
     suspend fun fetchTodayDisclosures(beginDate: String, endDate: String): List<DartDisclosure> {
+        val sample = Timer.start()
         var lastException: Exception? = null
 
         repeat(MAX_RETRY_ATTEMPTS) { attempt ->
@@ -38,20 +46,28 @@ class DartApiClient(
                     .bodyToMono<DartResponse>()
                     .awaitSingleOrNull()
 
-                if (response == null) return emptyList()
+                if (response == null) {
+                    sample.stop(timer)
+                    return emptyList()
+                }
 
                 if (response.status != "000") {
                     if (response.status == "013") {
                         // 013 = "조회된 데이터가 없습니다" — not an error
+                        sample.stop(timer)
                         return emptyList()
                     }
                     log.warn("DART API returned status={}, message={}", response.status, response.message)
+                    sample.stop(timer)
                     return emptyList()
                 }
 
-                return response.list.map { it.toDomain() }
+                val result = response.list.map { it.toDomain() }
+                sample.stop(timer)
+                return result
             } catch (e: Exception) {
                 lastException = e
+                errorCounter.increment()
                 log.warn("DART disclosure fetch failed, attempt {}/{}: {}", attempt + 1, MAX_RETRY_ATTEMPTS, e.message)
             }
         }
