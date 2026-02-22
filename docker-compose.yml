@@ -39,10 +39,12 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "5L6g3nShT-eMCtK--X86sw"
     ports:
       - "9092:9092"
     volumes:
       - kafka_data:/tmp/kraft-combined-logs
+    user: "0:0"
 
 volumes:
   timescaledb_data:

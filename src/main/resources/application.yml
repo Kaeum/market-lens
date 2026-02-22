@@ -22,6 +22,10 @@ spring:
 server:
   port: 8080
 
+cors:
+  allowed-origins:
+    - http://localhost:3000
+
 management:
   endpoints:
     web:
@@ -53,8 +57,8 @@ kis:
   ws-heartbeat-timeout-ms: 60000
 
 krx:
-  api-key: ${KRX_API_KEY:}
-  base-url: ${KRX_BASE_URL:http://data-dbg.krx.co.kr/svc/apis}
+  api-key: ${KRX_API_KEY:AD5896D0994C45B5B96456513C1DCD661A06AC46}
+  base-url: ${KRX_BASE_URL:https://data-dbg.krx.co.kr/svc/apis}
   connection-timeout-ms: 10000
   read-timeout-ms: 30000
 
@@ -70,3 +74,28 @@ naver:
   base-url: ${NAVER_BASE_URL:https://openapi.naver.com}
   connection-timeout-ms: 5000
   read-timeout-ms: 10000
+
+sentiment:
+  keywords:
+    positive:
+      - 수주
+      - 흑자전환
+      - 신고가
+      - 실적 상향
+      - 호실적
+      - MOU
+      - 대규모 투자
+      - 상장
+      - FDA 승인
+      - 특허
+    negative:
+      - 적자
+      - 실적 하향
+      - 감사의견 거절
+      - 횡령
+      - 상장폐지
+      - 공매도 과열
+      - 리콜
+      - 소송
+      - 하한가
+      - 부도

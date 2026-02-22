@@ -5,9 +5,9 @@ import io.kaeum.marketlens.application.port.`in`.ThemeQueryUseCase
 import io.kaeum.marketlens.domain.stock.StockRepository
 import io.kaeum.marketlens.domain.theme.ThemeRepository
 import io.kaeum.marketlens.domain.theme.ThemeStockRepository
+import io.kaeum.marketlens.application.port.out.SnapshotReadPort
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
-import io.kaeum.marketlens.infrastructure.redis.SnapshotReader
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -17,7 +17,7 @@ class ThemeService(
     private val themeRepository: ThemeRepository,
     private val themeStockRepository: ThemeStockRepository,
     private val stockRepository: StockRepository,
-    private val snapshotReader: SnapshotReader,
+    private val snapshotReader: SnapshotReadPort,
 ) : ThemeQueryUseCase {
 
     companion object {

@@ -25,6 +25,7 @@ class KafkaConfig(
         private const val OFFSET_RESET_LATEST = "latest"
         private const val TICKER_RAW_PARTITIONS = 16
         private const val NEWS_RAW_PARTITIONS = 8
+        private const val PHASE3_PARTITIONS = 8
         private const val REPLICATION_FACTOR: Short = 1
     }
 
@@ -62,5 +63,20 @@ class KafkaConfig(
     @Bean
     fun newsRawTopic(): NewTopic {
         return NewTopic(KafkaTopics.NEWS_RAW, NEWS_RAW_PARTITIONS, REPLICATION_FACTOR)
+    }
+
+    @Bean
+    fun volumeSpikeTopic(): NewTopic {
+        return NewTopic(KafkaTopics.VOLUME_SPIKE, PHASE3_PARTITIONS, REPLICATION_FACTOR)
+    }
+
+    @Bean
+    fun themeScoreTopic(): NewTopic {
+        return NewTopic(KafkaTopics.THEME_SCORE, PHASE3_PARTITIONS, REPLICATION_FACTOR)
+    }
+
+    @Bean
+    fun newsScoredTopic(): NewTopic {
+        return NewTopic(KafkaTopics.NEWS_SCORED, PHASE3_PARTITIONS, REPLICATION_FACTOR)
     }
 }

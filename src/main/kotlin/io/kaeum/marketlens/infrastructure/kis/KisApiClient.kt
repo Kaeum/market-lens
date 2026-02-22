@@ -74,8 +74,7 @@ class KisApiClient(
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .awaitExchange { clientResponse ->
                     if (clientResponse.statusCode() == HttpStatusCode.valueOf(401)) {
-                        // Token expired — force refresh and rethrow to trigger retry
-                        tokenManager.getAccessToken()
+                        tokenManager.invalidateToken()
                         throw BusinessException(ErrorCode.KIS_TOKEN_ERROR)
                     }
                     if (clientResponse.statusCode().isError) {
@@ -146,7 +145,7 @@ class KisApiClient(
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .awaitExchange { clientResponse ->
                     if (clientResponse.statusCode() == HttpStatusCode.valueOf(401)) {
-                        tokenManager.getAccessToken()
+                        tokenManager.invalidateToken()
                         throw BusinessException(ErrorCode.KIS_TOKEN_ERROR)
                     }
                     if (clientResponse.statusCode().isError) {

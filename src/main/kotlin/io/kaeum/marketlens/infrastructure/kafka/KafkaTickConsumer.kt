@@ -48,11 +48,12 @@ class KafkaTickConsumer(
                             log.warn("Failed to update Redis snapshot for {}: {}", tick.stockCode, e.message)
                         }
                         inMemoryTickProducer.emit(tick)
+                        record.receiverOffset().acknowledge()
                     }
                 } catch (e: Exception) {
                     log.warn("Failed to deserialize tick record: {}", e.message)
+                    record.receiverOffset().acknowledge()
                 }
-                record.receiverOffset().acknowledge()
             }
             .doOnError { e ->
                 log.error("Kafka consumer error: {}", e.message, e)

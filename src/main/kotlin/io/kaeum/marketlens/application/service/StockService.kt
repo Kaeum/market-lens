@@ -3,15 +3,15 @@ package io.kaeum.marketlens.application.service
 import io.kaeum.marketlens.application.dto.StockResponse
 import io.kaeum.marketlens.application.port.`in`.StockQueryUseCase
 import io.kaeum.marketlens.domain.stock.StockRepository
+import io.kaeum.marketlens.application.port.out.SnapshotReadPort
 import io.kaeum.marketlens.global.exception.BusinessException
 import io.kaeum.marketlens.global.exception.ErrorCode
-import io.kaeum.marketlens.infrastructure.redis.SnapshotReader
 import org.springframework.stereotype.Service
 
 @Service
 class StockService(
     private val stockRepository: StockRepository,
-    private val snapshotReader: SnapshotReader,
+    private val snapshotReader: SnapshotReadPort,
 ) : StockQueryUseCase {
 
     override suspend fun searchStocks(market: String?, keyword: String?): List<StockResponse> {

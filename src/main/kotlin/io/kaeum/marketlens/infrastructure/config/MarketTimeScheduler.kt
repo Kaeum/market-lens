@@ -1,5 +1,6 @@
 package io.kaeum.marketlens.infrastructure.config
 
+import io.kaeum.marketlens.infrastructure.kis.KisWebSocketClient
 import io.kaeum.marketlens.infrastructure.krx.CorrelationCalculator
 import io.kaeum.marketlens.infrastructure.krx.KrxHistoricalCollector
 import jakarta.annotation.PostConstruct
@@ -11,8 +12,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Profile
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Component
 import java.time.DayOfWeek
 import java.time.Duration
@@ -27,11 +30,14 @@ import java.util.concurrent.atomic.AtomicReference
 class MarketTimeScheduler(
     private val krxHistoricalCollector: KrxHistoricalCollector,
     private val correlationCalculator: CorrelationCalculator,
+    private val kisWebSocketClient: KisWebSocketClient,
+    private val databaseClient: DatabaseClient,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var dailyBatchJob: Job? = null
+    private var webSocketJob: Job? = null
 
     val lastDailyBatchResult = AtomicReference<DailyBatchResult?>(null)
 
@@ -55,12 +61,55 @@ class MarketTimeScheduler(
                 }
             }
         }
-        log.info("MarketTimeScheduler started (daily batch at {})", DAILY_BATCH_TIME)
+
+        webSocketJob = scope.launch {
+            while (isActive) {
+                try {
+                    if (isTradingDay()) {
+                        val now = LocalTime.now(KST)
+                        when {
+                            now.isBefore(MARKET_OPEN) -> {
+                                val waitMs = Duration.between(now, MARKET_OPEN).toMillis()
+                                log.debug("Waiting {}ms until market open for WebSocket", waitMs)
+                                delay(waitMs)
+                            }
+                            now.isBefore(MARKET_CLOSE) -> {
+                                if (kisWebSocketClient.getState() == KisWebSocketClient.ConnectionState.DISCONNECTED) {
+                                    log.info("Market is open, connecting KIS WebSocket")
+                                    kisWebSocketClient.connect()
+                                    subscribeInitialStocks()
+                                }
+                                // 장 마감까지 대기
+                                val waitMs = Duration.between(now, MARKET_CLOSE).toMillis()
+                                delay(waitMs)
+                                // 장 마감 — disconnect
+                                log.info("Market closed, disconnecting KIS WebSocket")
+                                kisWebSocketClient.disconnect()
+                            }
+                            else -> {
+                                // 장 마감 후 — 내일 장 시작까지 대기
+                                if (kisWebSocketClient.getState() != KisWebSocketClient.ConnectionState.DISCONNECTED) {
+                                    kisWebSocketClient.disconnect()
+                                }
+                            }
+                        }
+                    }
+                    // 1분마다 상태 체크
+                    delay(WS_CHECK_INTERVAL_MS)
+                } catch (e: Exception) {
+                    log.error("WebSocket orchestration failed: {}", e.message, e)
+                    delay(RETRY_DELAY_MS)
+                }
+            }
+        }
+
+        log.info("MarketTimeScheduler started (daily batch at {}, WebSocket {}~{})", DAILY_BATCH_TIME, MARKET_OPEN, MARKET_CLOSE)
     }
 
     @PreDestroy
     fun destroy() {
         dailyBatchJob?.cancel()
+        webSocketJob?.cancel()
         log.info("MarketTimeScheduler stopped")
     }
 
@@ -77,6 +126,31 @@ class MarketTimeScheduler(
 
     private fun isWeekday(date: LocalDate): Boolean {
         return date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
+    }
+
+    private suspend fun subscribeInitialStocks() {
+        try {
+            val stockCodes = databaseClient.sql(
+                "SELECT DISTINCT stock_code FROM theme_stock"
+            )
+                .map { row, _ -> row.get("stock_code", String::class.java)!! }
+                .all()
+                .collectList()
+                .awaitFirstOrNull() ?: emptyList()
+
+            log.info("Subscribing to {} initial stocks from theme_stock", stockCodes.size)
+            for (stockCode in stockCodes) {
+                val subscribed = kisWebSocketClient.subscribe(stockCode)
+                if (!subscribed) {
+                    log.warn("Reached WebSocket subscription limit at {} stocks", kisWebSocketClient.getSubscribedStocks().size)
+                    break
+                }
+                delay(100) // Rate limit between subscriptions
+            }
+            log.info("Initial stock subscription completed: {} stocks", kisWebSocketClient.getSubscribedStocks().size)
+        } catch (e: Exception) {
+            log.error("Failed to subscribe initial stocks: {}", e.message, e)
+        }
     }
 
     private suspend fun waitUntilDailyBatchTime() {
@@ -139,6 +213,7 @@ class MarketTimeScheduler(
         private val DAILY_BATCH_TIME = LocalTime.of(16, 0)
         private const val MIN_POST_BATCH_DELAY_MS = 60 * 60 * 1000L  // 1시간
         private const val RETRY_DELAY_MS = 5 * 60 * 1000L            // 5분
+        private const val WS_CHECK_INTERVAL_MS = 60 * 1000L          // 1분
     }
 }
 

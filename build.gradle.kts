@@ -41,9 +41,13 @@ dependencies {
     // Redis Reactive
     implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 
-    // Kafka (reactor-kafka + spring-kafka for KafkaAdmin/NewTopic)
+    // Kafka (reactor-kafka + spring-kafka for KafkaAdmin/NewTopic + Kafka Streams for Phase 3)
     implementation("io.projectreactor.kafka:reactor-kafka")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.apache.kafka:kafka-streams")
+
+    // Netty DNS native (macOS ARM)
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
 
     // API 문서
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.4")

@@ -56,14 +56,14 @@ class SnapshotBatchFlusher(
     @PreDestroy
     fun stop() {
         log.info("Stopping snapshot batch flusher")
+        scope.cancel()
         runBlocking {
             try {
                 flush()
             } catch (e: Exception) {
-                log.warn("Final flush failed: {}", e.message, e)
+                log.debug("Final flush skipped (infrastructure already closing): {}", e.message)
             }
         }
-        scope.cancel()
     }
 
     internal suspend fun flush() {

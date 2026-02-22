@@ -30,9 +30,9 @@ class KrxApiClient(
     private val log = LoggerFactory.getLogger(javaClass)
 
     companion object {
-        private const val ENDPOINT_STOCK_ISU_BASE_INFO = "/svc/apis/sto/stk_isu_base_info"
-        private const val ENDPOINT_KOSPI_DAILY = "/svc/apis/sto/stk_bdd_trd"
-        private const val ENDPOINT_KOSDAQ_DAILY = "/svc/apis/sto/ksq_bdd_trd"
+        private const val ENDPOINT_STOCK_ISU_BASE_INFO = "/sto/stk_isu_base_info"
+        private const val ENDPOINT_KOSPI_DAILY = "/sto/stk_bydd_trd"
+        private const val ENDPOINT_KOSDAQ_DAILY = "/sto/ksq_bydd_trd"
         private const val PARAM_AUTH_KEY = "AUTH_KEY"
         private const val PARAM_MKT_TYPE = "MKT_TYPE"
         private const val PARAM_BAS_DD = "BAS_DD"

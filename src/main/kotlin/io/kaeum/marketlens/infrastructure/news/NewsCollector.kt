@@ -29,6 +29,7 @@ class NewsCollector(
     private val naverNewsClient: NaverNewsClient,
     private val dartApiClient: DartApiClient,
     private val newsStockMapper: NewsStockMapper,
+    private val keywordSentimentAnalyzer: KeywordSentimentAnalyzer,
     private val databaseClient: DatabaseClient,
     private val marketTimeScheduler: MarketTimeScheduler,
     private val meterRegistry: MeterRegistry,
@@ -185,10 +186,12 @@ class NewsCollector(
                 val themeId = findThemeIdForEntry(entry)
                 if (themeId == null) continue
 
+                val sentimentScore = keywordSentimentAnalyzer.analyzeSentiment(entry.title, entry.summary)
+
                 val newsId = databaseClient.sql(
                     """
-                    INSERT INTO theme_news (theme_id, title, summary, source_url, published_at)
-                    VALUES (:themeId, :title, :summary, :sourceUrl, :publishedAt)
+                    INSERT INTO theme_news (theme_id, title, summary, source_url, published_at, sentiment_score)
+                    VALUES (:themeId, :title, :summary, :sourceUrl, :publishedAt, :sentimentScore)
                     ON CONFLICT (source_url) DO NOTHING
                     RETURNING news_id
                     """.trimIndent()
@@ -202,6 +205,7 @@ class NewsCollector(
                     }
                     .bind("sourceUrl", entry.sourceUrl.take(1000))
                     .bind("publishedAt", entry.publishedAt)
+                    .bind("sentimentScore", java.math.BigDecimal.valueOf(sentimentScore))
                     .map { row, _ -> row.get("news_id", java.lang.Long::class.java)?.toLong() }
                     .first()
                     .awaitFirstOrNull()

@@ -6,8 +6,8 @@ import io.kaeum.marketlens.domain.stock.StockRepository
 import io.kaeum.marketlens.domain.theme.Theme
 import io.kaeum.marketlens.domain.theme.ThemeRepository
 import io.kaeum.marketlens.domain.theme.ThemeStockRepository
+import io.kaeum.marketlens.application.port.out.SnapshotReadPort
 import io.kaeum.marketlens.global.exception.BusinessException
-import io.kaeum.marketlens.infrastructure.redis.SnapshotReader
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -21,7 +21,7 @@ class ThemeServiceTest {
     private lateinit var themeRepository: ThemeRepository
     private lateinit var themeStockRepository: ThemeStockRepository
     private lateinit var stockRepository: StockRepository
-    private lateinit var snapshotReader: SnapshotReader
+    private lateinit var snapshotReader: SnapshotReadPort
     private lateinit var themeService: ThemeService
 
     @BeforeEach
