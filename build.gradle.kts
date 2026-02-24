@@ -69,6 +69,7 @@ dependencies {
     testImplementation("io.r2dbc:r2dbc-h2")
     testRuntimeOnly("com.h2database:h2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.apache.kafka:kafka-streams-test-utils")
 }
 
 kotlin {
