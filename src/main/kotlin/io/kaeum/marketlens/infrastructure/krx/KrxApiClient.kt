@@ -34,12 +34,9 @@ class KrxApiClient(
         private const val ENDPOINT_KOSPI_DAILY = "/sto/stk_bydd_trd"
         private const val ENDPOINT_KOSDAQ_DAILY = "/sto/ksq_bydd_trd"
         private const val PARAM_AUTH_KEY = "AUTH_KEY"
-        private const val PARAM_MKT_TYPE = "MKT_TYPE"
-        private const val PARAM_BAS_DD = "BAS_DD"
+        private const val PARAM_BAS_DD = "basDd"
         private const val MARKET_KOSPI = "KOSPI"
         private const val MARKET_KOSDAQ = "KOSDAQ"
-        private const val MKT_TYPE_STK = "STK"
-        private const val MKT_TYPE_KSQ = "KSQ"
         private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd")
     }
 
@@ -56,32 +53,27 @@ class KrxApiClient(
     }
 
     private suspend fun fetchStockList(market: String?): List<StockMasterData> {
-        val serviceName = when (market?.uppercase()) {
-            MARKET_KOSPI -> MKT_TYPE_STK
-            MARKET_KOSDAQ -> MKT_TYPE_KSQ
-            else -> null
-        }
-
         try {
             val response = webClient.get()
                 .uri { builder ->
                     builder.path(ENDPOINT_STOCK_ISU_BASE_INFO)
                         .queryParam(PARAM_AUTH_KEY, krxProperties.apiKey)
-                    if (serviceName != null) {
-                        builder.queryParam(PARAM_MKT_TYPE, serviceName)
-                    }
-                    builder.build()
+                        .build()
                 }
                 .retrieve()
                 .awaitBody<KrxStockListResponse>()
 
-            return response.output.map { item ->
-                StockMasterData(
-                    stockCode = item.isuSrtCd,
-                    stockName = item.isuNm,
-                    market = item.mktName ?: guessMarket(item.isuSrtCd),
-                )
-            }
+            return response.output
+                .filter { item ->
+                    market == null || item.mktName.equals(market, ignoreCase = true)
+                }
+                .map { item ->
+                    StockMasterData(
+                        stockCode = item.isuSrtCd,
+                        stockName = item.isuNm,
+                        market = item.mktName ?: guessMarket(item.isuSrtCd),
+                    )
+                }
         } catch (e: BusinessException) {
             throw e
         } catch (e: Exception) {
@@ -138,18 +130,20 @@ class KrxApiClient(
         @JsonProperty("OutBlock_1") val output: List<KrxStockItem> = emptyList(),
     )
 
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     private data class KrxStockItem(
         @JsonProperty("ISU_SRT_CD") val isuSrtCd: String,
         @JsonProperty("ISU_NM") val isuNm: String,
-        @JsonProperty("MKT_NM") val mktName: String?,
+        @JsonProperty("MKT_TP_NM") val mktName: String?,
     )
 
     private data class KrxOhlcvResponse(
         @JsonProperty("OutBlock_1") val output: List<KrxOhlcvItem> = emptyList(),
     )
 
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     private data class KrxOhlcvItem(
-        @JsonProperty("ISU_SRT_CD") val stockCode: String,
+        @JsonProperty("ISU_CD") val stockCode: String,
         @JsonProperty("TDD_OPNPRC") val openPrice: String?,
         @JsonProperty("TDD_HGPRC") val highPrice: String?,
         @JsonProperty("TDD_LWPRC") val lowPrice: String?,

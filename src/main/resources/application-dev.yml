@@ -7,5 +7,6 @@ spring:
 
 logging:
   level:
+    root: WARN
     io.kaeum.marketlens: DEBUG
-    org.springframework.r2dbc: DEBUG
+    org.springframework.r2dbc: WARN

@@ -57,7 +57,7 @@ kis:
   ws-heartbeat-timeout-ms: 60000
 
 krx:
-  api-key: ${KRX_API_KEY:AD5896D0994C45B5B96456513C1DCD661A06AC46}
+  api-key: ${KRX_API_KEY:}
   base-url: ${KRX_BASE_URL:https://data-dbg.krx.co.kr/svc/apis}
   connection-timeout-ms: 10000
   read-timeout-ms: 30000

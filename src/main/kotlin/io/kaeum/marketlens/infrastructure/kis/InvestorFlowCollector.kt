@@ -45,9 +45,9 @@ class InvestorFlowCollector(
     fun init() {
         pollingJob = scope.launch {
             while (isActive) {
-                if (!marketTimeScheduler.isTradingDay()) {
-                    log.debug("Non-trading day, skipping investor flow polling")
-                    delay(NON_TRADING_DAY_CHECK_INTERVAL_MS)
+                if (!marketTimeScheduler.isMarketOpen()) {
+                    log.debug("Market is closed, skipping investor flow polling")
+                    delay(if (marketTimeScheduler.isTradingDay()) POLLING_INTERVAL_MS else NON_TRADING_DAY_CHECK_INTERVAL_MS)
                     continue
                 }
                 try {
